@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">MusicPlayer</string>
+    <string name="temp_name">Song Not Selected</string>
+
+</resources>

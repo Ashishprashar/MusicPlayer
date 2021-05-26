@@ -1,21 +1,20 @@
 package com.example.musicplayer;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.database.Cursor;
 import android.media.MediaPlayer;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.MediaStore;
 import android.util.Log;
-import android.view.View;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
-import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -29,13 +28,12 @@ import com.karumi.dexter.listener.single.PermissionListener;
 import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity implements MusicAdapter.ListItemClickListener{
-    public static final int REQUESTCODE = 1;
     static ArrayList<MusicFiles> musicFiles;
     RecyclerView recyclerView;
-    TextView title,duration,progress;
+    LinearLayout linearLayout;
+    TextView title,duration,progress,songName,artist;
     ImageView prev, playPause, next;
     SeekBar seekBar;
-    int flag=0;
     int position;
     Uri uri;
     Handler handler = new Handler(      );
@@ -45,12 +43,18 @@ public class MainActivity extends AppCompatActivity implements MusicAdapter.List
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+//        getSupportActionBar().hide();
         recyclerView = findViewById(R.id.recyclerView);
-        setView();
-        runtimepermission();
-        display();
+        try{
+            setView();
+            runtimepermission();
+            display();
 
-        onClick();
+            onClick();
+        }catch (Exception e){
+            Log.e("tag",e+"");
+        }
+
         this.runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -58,6 +62,7 @@ public class MainActivity extends AppCompatActivity implements MusicAdapter.List
                     int curr = mediaPlayer.getCurrentPosition();
                     seekBar.setProgress(curr);
                     progress.setText(millisecondsToString(curr));
+
                 }
                 handler.postDelayed(this,1000);
             }
@@ -68,60 +73,50 @@ public class MainActivity extends AppCompatActivity implements MusicAdapter.List
     }
 
     private void onClick() {
-        playPause.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Log.e("tag", "clicked");
-                if (view.getId() == R.id.playPause) {
-                    try {
+        playPause.setOnClickListener(view -> {
+            if(!musicFiles.isEmpty()){
 
-                    if (mediaPlayer.isPlaying()) {
-                        // is playing
-                        mediaPlayer.pause();
-                        playPause.setImageResource(R.drawable.play);
-                    } else {
-                        // on pause
-                        mediaPlayer.start();
-                        playPause.setImageResource(R.drawable.pause);
-                    }
-                    }catch (Exception e){
-                     position=0;
-                     uri = Uri.parse(musicFiles.get(position).getPath());
-                     play();
-                   }
+            Log.e("tag", "clicked");
+            if (view.getId() == R.id.playPause && mediaPlayer!=null) {
+
+
+                if (mediaPlayer.isPlaying()) {
+                    // is playing
+                    mediaPlayer.pause();
+                    playPause.setImageResource(R.drawable.play);
+                } else {
+                    // on pause
+                    mediaPlayer.start();
+                    playPause.setImageResource(R.drawable.pause);
                 }
+
+            }
             }
         });
-        next.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if(mediaPlayer!= null){
-                    if(position==musicFiles.size()-1){
-                        position=0;
-                    }else{
+        next.setOnClickListener(view -> {
+            if(mediaPlayer!= null){
+                if(position==musicFiles.size()-1){
+                    position=0;
+                }else{
 
-                    position+=1;
-                    }
-
-                    uri = Uri.parse(musicFiles.get(position).getPath());
-                    play();
+                position+=1;
                 }
+
+                uri = Uri.parse(musicFiles.get(position).getPath());
+                play();
             }
         });
-        prev.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if(mediaPlayer!= null){
-                    if(position==0){
-                        position=musicFiles.size()-1;
-                    }
-                    else{
-                        position-=1;
-                    }
-
-                    uri = Uri.parse(musicFiles.get(position).getPath());
-                    play();
+        prev.setOnClickListener(view -> {
+            if(mediaPlayer!= null){
+                if(position==0){
+                    position=musicFiles.size()-1;
                 }
+                else{
+                    position-=1;
+                }
+
+                uri = Uri.parse(musicFiles.get(position).getPath());
+                play();
             }
         });
 
@@ -136,19 +131,24 @@ public class MainActivity extends AppCompatActivity implements MusicAdapter.List
         prev =findViewById(R.id.prev);
         title = findViewById(R.id.title1);
         title.setSelected(true);
+        songName = findViewById(R.id.title);
+        linearLayout = findViewById(R.id.linear);
+        artist = findViewById(R.id.artist);
         duration=findViewById(R.id.duration);
         progress = findViewById(R.id.position);
     }
 
+    @SuppressLint("SetTextI18n")
     private void display() {
 
         recyclerView.setHasFixedSize(true);
         try{
 
-        if ((musicFiles==null)){
+        if ((musicFiles!=null)){
             musicAdapter =new MusicAdapter(this,musicFiles,this);
             recyclerView.setAdapter(musicAdapter);
             recyclerView.setLayoutManager(new LinearLayoutManager(MainActivity.this,RecyclerView.VERTICAL,false));
+
             title.setText("No slected file");
             Log.e("error check","in display");
         }
@@ -164,10 +164,10 @@ public class MainActivity extends AppCompatActivity implements MusicAdapter.List
         Dexter.withActivity(this)
                 .withPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
                 .withListener(new PermissionListener() {
-                    @RequiresApi(api = Build.VERSION_CODES.R)
                     @Override
                     public void onPermissionGranted(PermissionGrantedResponse response) {
                         musicFiles = getAllMusic(MainActivity.this);
+
                         display();
 
                     }
@@ -217,6 +217,7 @@ public class MainActivity extends AppCompatActivity implements MusicAdapter.List
     @Override
     public void onListItemClick(int position) {
         this.position=position;
+
         setSong(position);
     }
 
@@ -224,7 +225,9 @@ public class MainActivity extends AppCompatActivity implements MusicAdapter.List
 
 
 //        releaseMediaPlayer();
+
         if(musicFiles!=null){
+
             playPause.setImageResource(R.drawable.pause);
             uri = Uri.parse(musicFiles.get(position).getPath());
 
@@ -241,12 +244,9 @@ public class MainActivity extends AppCompatActivity implements MusicAdapter.List
         if(mediaPlayer!=null){
             mediaPlayer.stop();
             mediaPlayer.release();
-            mediaPlayer = MediaPlayer.create(getApplicationContext(), uri);
-            mediaPlayer.start();
-        }else {
-            mediaPlayer = MediaPlayer.create(getApplicationContext(), uri);
-            mediaPlayer.start();
         }
+        mediaPlayer = MediaPlayer.create(getApplicationContext(), uri);
+        mediaPlayer.start();
         seekBar.setMax(musicFiles.get(position).getduration());
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -272,7 +272,7 @@ public class MainActivity extends AppCompatActivity implements MusicAdapter.List
     }
 
     public String millisecondsToString(int time) {
-        String elapsedTime = "";
+        String elapsedTime;
         int minutes = time / 1000 / 60;
         int seconds = time / 1000 % 60;
         elapsedTime = minutes+":";

@@ -11,6 +11,7 @@ public class MusicFiles  {
         this.title = title;
         this.artist = artist;
         this.album = album;
+
         this.duration = duration;
     }
 

@@ -6,6 +6,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -47,13 +48,16 @@ public class MusicAdapter extends RecyclerView.Adapter<MusicAdapter.MyViewHolder
     @Override
     public void onBindViewHolder(@NonNull MyViewHolder holder, final int position) {
         holder.title.setText(mFiles.get(position).getTitle());
+        holder.artist.setText(mFiles.get(position).getArtist());
+
         byte[] image = getAlbumArt(mFiles.get(position).getPath());
         if (image!=null){
             Glide.with(mContext).asBitmap().load(image).into(holder.songImage);
         }
         else{
-            Glide.with(mContext).load(R.drawable.play).into(holder.songImage);
+            Glide.with(mContext).load(R.drawable.play_black).into(holder.songImage);
         }
+
 
 
     }
@@ -68,18 +72,20 @@ public class MusicAdapter extends RecyclerView.Adapter<MusicAdapter.MyViewHolder
     public class MyViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener  {
         TextView title,artist;
         CircularImageView songImage;
-
+        LinearLayout linearLayout;
         public MyViewHolder(@NonNull View itemView) {
             super(itemView);
             title = itemView.findViewById(R.id.title);
             songImage=itemView.findViewById(R.id.songImage);
             artist =itemView.findViewById(R.id.artist);
+            linearLayout=itemView.findViewById(R.id.linear);
             itemView.setOnClickListener(this);
         }
 
         @Override
         public void onClick(View view) {
             int position =getAdapterPosition();
+
             mOnClickListener.onListItemClick(position);
             Log.d("TAG", "Clicked!");
         }

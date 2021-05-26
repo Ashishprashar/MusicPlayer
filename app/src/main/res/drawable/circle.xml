@@ -4,10 +4,15 @@
     android:innerRadius="0dp"
     android:shape="ring"
     android:thicknessRatio="1.9"
-    android:useLevel="false" >
-    <solid android:color="@android:color/transparent" />
+    android:useLevel="false"
+
+    >
+    <gradient android:color="@android:color/black"
+        />
 
     <stroke
         android:width="10dp"
-        android:color="@android:color/white" />
+        android:color="@android:color/black"
+
+        />
 </shape>

@@ -6,7 +6,9 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.SectionIndexer;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -16,13 +18,15 @@ import com.bumptech.glide.Glide;
 import com.mikhaellopez.circularimageview.CircularImageView;
 
 import java.util.ArrayList;
+import java.util.List;
 
-public class MusicAdapter extends RecyclerView.Adapter<MusicAdapter.MyViewHolder> {
+public class MusicAdapter extends RecyclerView.Adapter<MusicAdapter.MyViewHolder> implements SectionIndexer {
 
     private Context mContext;
     private ArrayList<MusicFiles> mFiles;
     final private ListItemClickListener mOnClickListener ;
-
+    int heartFlag=0;
+    private ArrayList<Integer> mSectionPositions;
 
 
 
@@ -32,6 +36,31 @@ public class MusicAdapter extends RecyclerView.Adapter<MusicAdapter.MyViewHolder
         this.mOnClickListener = mOnClickListener;
     }
 
+
+
+    @Override
+    public Object[] getSections() {
+        List<String> sections = new ArrayList<>(26);
+        mSectionPositions = new ArrayList<>(26);
+        for (int i = 0, size = MainActivity.musicFiles.size(); i < size; i++) {
+            String section = String.valueOf(MainActivity.musicFiles.get(i).getTitle().charAt(0)).toUpperCase();
+            if (!sections.contains(section)) {
+                sections.add(section);
+                mSectionPositions.add(i);
+            }
+        }
+        return sections.toArray(new String[0]);
+    }
+
+    @Override
+    public int getPositionForSection(int i) {
+        return mSectionPositions.get(i);
+    }
+
+    @Override
+    public int getSectionForPosition(int i) {
+        return i;
+    }
 
 
     interface ListItemClickListener{
@@ -49,19 +78,36 @@ public class MusicAdapter extends RecyclerView.Adapter<MusicAdapter.MyViewHolder
     public void onBindViewHolder(@NonNull MyViewHolder holder, final int position) {
         holder.title.setText(mFiles.get(position).getTitle());
         holder.artist.setText(mFiles.get(position).getArtist());
-
-        byte[] image = getAlbumArt(mFiles.get(position).getPath());
-        if (image!=null){
-            Glide.with(mContext).asBitmap().load(image).into(holder.songImage);
+        if(mFiles.get(position).getFav()==(int)1){
+            holder.heart.setImageResource(R.drawable.favorite);
         }
-        else{
-            Glide.with(mContext).load(R.drawable.play_black).into(holder.songImage);
+        holder.heart.setOnClickListener(view -> {
+            if(heartFlag==0){
+                heartFlag=1;
+                mFiles.get(position).setFav(1);
+                holder.heart.setImageResource(R.drawable.favorite);
+            }
+            else{
+                heartFlag=0;
+                mFiles.get(position).setFav(0);
+                MainActivity.heart.setImageResource(R.drawable.fav_white);
+                holder.heart.setImageResource(0);
+//
+            }
+        });
+        try{
+
+            byte[] image = getAlbumArt(mFiles.get(position).getPath());
+            if (image!=null){
+                Glide.with(mContext).asBitmap().load(image).into(holder.songImage);
+            }
+            else{
+                Glide.with(mContext).load(R.drawable.music).into(holder.songImage);
+            }
+        }catch(Exception e){
+
         }
 
-
-
-    }
-    private void setView() {
 
     }
     @Override
@@ -73,12 +119,15 @@ public class MusicAdapter extends RecyclerView.Adapter<MusicAdapter.MyViewHolder
         TextView title,artist;
         CircularImageView songImage;
         LinearLayout linearLayout;
+        ImageView heart;
         public MyViewHolder(@NonNull View itemView) {
             super(itemView);
             title = itemView.findViewById(R.id.title);
             songImage=itemView.findViewById(R.id.songImage);
             artist =itemView.findViewById(R.id.artist);
-            linearLayout=itemView.findViewById(R.id.linear);
+            linearLayout=itemView.findViewById(R.id.info);
+            heart=itemView.findViewById(R.id.heart);
+
             itemView.setOnClickListener(this);
         }
 

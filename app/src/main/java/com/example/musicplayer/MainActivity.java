@@ -2,59 +2,84 @@ package com.example.musicplayer;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.karumi.dexter.Dexter;
 import com.karumi.dexter.PermissionToken;
 import com.karumi.dexter.listener.PermissionDeniedResponse;
 import com.karumi.dexter.listener.PermissionGrantedResponse;
 import com.karumi.dexter.listener.single.PermissionListener;
 
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 
-public class MainActivity extends AppCompatActivity implements MusicAdapter.ListItemClickListener{
-    static ArrayList<MusicFiles> musicFiles;
-    RecyclerView recyclerView;
-    LinearLayout linearLayout;
+public class MainActivity extends AppCompatActivity implements MusicAdapter.ListItemClickListener {
+    public static ArrayList<MusicFiles> musicFiles,favMusicList;
+    in.myinnos.alphabetsindexfastscrollrecycler.IndexFastScrollRecyclerView recyclerView;
+        RecyclerView favRecycler;
+//    RelativeLayout relativeLayout;
     TextView title,duration,progress,songName,artist;
-    ImageView prev, playPause, next;
+    ImageView prev, playPause, next,shuffle,favList;
+
+//    RelativeLayout l1;
     SeekBar seekBar;
-    int position;
+    int position,flag=0;
+    public static ImageView heart;
+    AlertDialog.Builder dailogBuilder;
+    Dialog dialog;
     Uri uri;
     Handler handler = new Handler(      );
-    MusicAdapter musicAdapter;
+    MusicAdapter musicAdapter,musicAdapter1;
     MediaPlayer mediaPlayer;
+    static  final String POSITION = "position";
+
+//    ImageView ivView =recyclerView.findViewById(R.id.heart);
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main);
-//        getSupportActionBar().hide();
+        getSupportActionBar().hide();
+
         recyclerView = findViewById(R.id.recyclerView);
-        try{
+        recyclerView.setIndexBarTransparentValue((float)0);
+        recyclerView.setIndexBarStrokeVisibility(false);
+        //        try{
             setView();
             runtimepermission();
+             loadData();
+//        musicFiles = getAllMusic(MainActivity.this);
+//        display();
             display();
 
             onClick();
-        }catch (Exception e){
-            Log.e("tag",e+"");
-        }
-
+//        }catch (Exception e){
+//            Log.e("tag",e+"error");
+//        }
         this.runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -62,14 +87,50 @@ public class MainActivity extends AppCompatActivity implements MusicAdapter.List
                     int curr = mediaPlayer.getCurrentPosition();
                     seekBar.setProgress(curr);
                     progress.setText(millisecondsToString(curr));
+                    mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+                        @Override
+                        public void onCompletion(MediaPlayer mediaPlayer) {
+                            nextSong();
+                        }
 
+
+                    });
                 }
                 handler.postDelayed(this,1000);
             }
         });
 
 
+    }
 
+
+    private void saveData() {
+        SharedPreferences sharedPreferences = getSharedPreferences("shared Preferences",MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        Gson gson =new Gson();
+        String json = gson.toJson(musicFiles);
+        editor.putString("saved",json);
+        editor.apply();
+        Log.e("save","happed"+json);
+    }
+    private void loadData(){
+        SharedPreferences sharedPreferences = getSharedPreferences("shared Preferences",MODE_PRIVATE);
+        Gson gson =new Gson();
+        String json =sharedPreferences.getString("saved",null);
+        Type type =new TypeToken<ArrayList<MusicFiles>>() {}.getType();
+        musicFiles =gson.fromJson(json,type);
+        if(musicFiles==null){
+            musicFiles=getAllMusic(this);
+            display();
+        }
+//        Log.e("load","happed"+musicFiles.get(0).getFav());
+
+    }
+
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+
+        super.onSaveInstanceState(outState);
     }
 
     private void onClick() {
@@ -94,35 +155,77 @@ public class MainActivity extends AppCompatActivity implements MusicAdapter.List
             }
         });
         next.setOnClickListener(view -> {
-            if(mediaPlayer!= null){
-                if(position==musicFiles.size()-1){
-                    position=0;
-                }else{
-
-                position+=1;
-                }
-
-                uri = Uri.parse(musicFiles.get(position).getPath());
-                play();
-            }
+            nextSong();
         });
         prev.setOnClickListener(view -> {
             if(mediaPlayer!= null){
-                if(position==0){
-                    position=musicFiles.size()-1;
+                if(flag==1){
+                    double rand=Math.random()*10;
+                    Log.e("shuffle",rand+" "+musicFiles.size());
+                    position = (int)rand%(musicFiles.size()-1);
+                }else{
+                    if(position==0){
+                        position=musicFiles.size()-1;
+                    }
+                    else{
+                        position-=1;
+                    }
                 }
-                else{
-                    position-=1;
-                }
+
 
                 uri = Uri.parse(musicFiles.get(position).getPath());
                 play();
             }
         });
+        shuffle.setOnClickListener(view -> {
+            if(flag==0){
+
+                flag=1;
+                shuffle.setImageResource(R.drawable.shuffle_on);
+            }
+            else{
+                flag=0;
+                shuffle.setImageResource(R.drawable.shuffle);
+            }
+        });
+        heart.setOnClickListener(view -> {
+            if(musicFiles.get(position).getFav()!=1){
+                musicFiles.get(position).setFav(1);
+                heart.setImageResource(R.drawable.favorite);
+            }
+            else{
+                musicFiles.get(position).setFav(0);
+                heart.setImageResource(R.drawable.fav_white);
+            }
+            musicAdapter.notifyItemChanged(position);
+            saveData();
+
+
+        });
 
     }
+     void nextSong() {
+         if(mediaPlayer!= null){
+             if(flag==1){
+                 int rand = (int) (Math.random()*(musicFiles.size()-1));
+                 Log.e("shuffle",rand+" "+musicFiles.size());
+                 position = (int)rand;
+             }
+             else {
+                 if(position==musicFiles.size()-1){
 
+                     position=0;
+                 }else{
+                     position+=1;
+                 }
+             }
 
+             uri = Uri.parse(musicFiles.get(position).getPath());
+             play();
+         }
+    }
+
+    @SuppressLint("WrongViewCast")
     private void setView() {
         prev =findViewById(R.id.prev);
         playPause =findViewById(R.id.playPause);
@@ -132,10 +235,14 @@ public class MainActivity extends AppCompatActivity implements MusicAdapter.List
         title = findViewById(R.id.title1);
         title.setSelected(true);
         songName = findViewById(R.id.title);
-        linearLayout = findViewById(R.id.linear);
+//        relativeLayout = findViewById(R.id.info);
         artist = findViewById(R.id.artist);
         duration=findViewById(R.id.duration);
         progress = findViewById(R.id.position);
+        shuffle = findViewById(R.id.shuffle);
+//        favList = findViewById(R.id.favlist);
+//        l1 = findViewById(R.id.l1);
+        heart = findViewById(R.id.heart1);
     }
 
     @SuppressLint("SetTextI18n")
@@ -145,10 +252,9 @@ public class MainActivity extends AppCompatActivity implements MusicAdapter.List
         try{
 
         if ((musicFiles!=null)){
-            musicAdapter =new MusicAdapter(this,musicFiles,this);
+            musicAdapter =new MusicAdapter(this,musicFiles,MainActivity.this);
             recyclerView.setAdapter(musicAdapter);
             recyclerView.setLayoutManager(new LinearLayoutManager(MainActivity.this,RecyclerView.VERTICAL,false));
-
             title.setText("No slected file");
             Log.e("error check","in display");
         }
@@ -161,13 +267,13 @@ public class MainActivity extends AppCompatActivity implements MusicAdapter.List
 
     public void runtimepermission(){
 
-        Dexter.withActivity(this)
+        Dexter.withContext(this)
                 .withPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
                 .withListener(new PermissionListener() {
+                    @RequiresApi(api = Build.VERSION_CODES.N)
                     @Override
                     public void onPermissionGranted(PermissionGrantedResponse response) {
                         musicFiles = getAllMusic(MainActivity.this);
-
                         display();
 
                     }
@@ -186,9 +292,11 @@ public class MainActivity extends AppCompatActivity implements MusicAdapter.List
 
     }
 
-    public static ArrayList<MusicFiles> getAllMusic(Context context) {
+    public ArrayList<MusicFiles> getAllMusic(Context context) {
         ArrayList<MusicFiles> tempAudioList = new ArrayList<>();
         Uri uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+         String sortOrder = MediaStore.MediaColumns.DISPLAY_NAME+"";
+
 
         String[] projection = {
                 MediaStore.Audio.Media.ALBUM,
@@ -197,15 +305,25 @@ public class MainActivity extends AppCompatActivity implements MusicAdapter.List
                 MediaStore.Audio.Media.DATA,
                 MediaStore.Audio.Media.DURATION,
         };
-        Cursor cursor = context.getContentResolver().query(uri, projection, null, null, null);
+        Cursor cursor = context.getContentResolver().query(uri, projection, null, null, sortOrder);
         if (cursor != null) {
             while (cursor.moveToNext()) {
                 String album = cursor.getString(0);
                 String title = cursor.getString(1);
                 String artist = cursor.getString(2);
                 String path = cursor.getString(3);
-                String duration = cursor.getString(4);
-                MusicFiles musicFiles = new MusicFiles(path, title, artist, album, Integer.parseInt(duration));
+                long duration = cursor.getLong(4);
+                MusicFiles musicFiles;
+//                if(duration=="null"){
+                  Log.e("lag",duration+"");
+//                MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+//                retriever.setDataSource(this,Uri.parse(MediaStore.Audio.Media.DATA));
+//                String duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+//                int millSecond = Integer.parseInt(duration);
+                    musicFiles = new MusicFiles(path, title, artist, album, (int) duration);
+//                }else{
+//                    musicFiles = new MusicFiles(path, title, artist, album,0);
+//                }
                 Log.e("path:-" + path, "album" + album);
                 tempAudioList.add(musicFiles);
             }
@@ -218,7 +336,9 @@ public class MainActivity extends AppCompatActivity implements MusicAdapter.List
     public void onListItemClick(int position) {
         this.position=position;
 
+        Log.e("cj",musicFiles.get((int)position).getFav()+"");
         setSong(position);
+        play();
     }
 
     private void setSong(int position) {
@@ -233,7 +353,7 @@ public class MainActivity extends AppCompatActivity implements MusicAdapter.List
 
         }
 
-        play();
+
 
         }
 
@@ -241,6 +361,17 @@ public class MainActivity extends AppCompatActivity implements MusicAdapter.List
         title.setText(musicFiles.get(position).getTitle());
         playPause.setImageResource(R.drawable.pause);
         duration.setText(musicFiles.get(position).getDuration());
+        if(musicFiles.get(position).getFav()!=1){
+            heart.setImageResource(R.drawable.fav_white);
+//            ivView.setImageResource(0);
+        }
+        else{
+            heart.setImageResource(R.drawable.favorite);
+//            ivView.setImageResource(R.drawable.favorite);
+
+        }
+//        View view = LayoutManger.fi
+
         if(mediaPlayer!=null){
             mediaPlayer.stop();
             mediaPlayer.release();

@@ -4,15 +4,23 @@ import android.util.Log;
 
 public class MusicFiles  {
     String path,title,artist,album;
-    int duration;
+    int fav,duration;
 
     public MusicFiles(String path, String title, String artist, String album, int duration) {
         this.path = path;
         this.title = title;
         this.artist = artist;
         this.album = album;
-
+        this.fav=0;
         this.duration = duration;
+    }
+
+    public int getFav() {
+        return fav;
+    }
+
+    public void setFav(int fav) {
+        this.fav = fav;
     }
 
     @Override
